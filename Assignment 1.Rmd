@@ -1,0 +1,47 @@
+---
+title: "Assignment 1"
+author: "Osama Bin Zahir"
+date: "2023-09-08"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# source of dataset: Kaggle - https://www.kaggle.com/datasets/iamsouravbanerjee/airline-dataset?resource=download
+
+# loading required packages
+```{R}
+library(readxl)
+library(caret)
+```
+
+# loading the dataset
+```{R}
+airline <- read.csv("C:\\Users\\Osama Zahir\\Desktop\\airline dataset.csv")
+```
+
+# Printing descriptive statistics 
+```{R}
+summary(airline)
+```
+# Converting categorical variable into categorical variable
+```{R}
+gender_mapping = c("Female" = 0, "Male" = 1)
+airline$Gender = gender_mapping[airline$Gender]
+unique(airline$Gender)
+```
+```{R}
+head(airline)
+```
+
+# Plotting Histogram and Scatterplot
+```{R}
+hist(airline$Age, main = "Age of Passengers", xlab = "Age", ylab = "Frequency", col = "blue", border = "black")
+```
+
+```{R}
+plot(airline$Age, airline$Gender, main = "Age vs. Gender", xlab = "Age", ylab = "Gender", col = "red")
+abline(lm(airline$Gender~airline$Age), col = "blue")
+```
+# A Scatterplot of Age vs. Gender was created because age was the only usable numerical variable and since the gender variable was converted to numerical, it was used to plot Age vs. Gender.  
