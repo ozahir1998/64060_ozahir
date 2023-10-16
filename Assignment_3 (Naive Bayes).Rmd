@@ -1,0 +1,169 @@
+---
+title: "Assignment_3"
+author: "Osama Bin Zahir"
+date: "2023-10-15"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+##loading required library
+```{r}
+rm(list = ls()) #cleaning the environment
+library(readr)
+library(caret)
+library(knitr)
+library(class)  
+library(ggplot2)
+library(dplyr)
+library(e1071)
+library(reshape2)
+library(tinytex)
+library(pivottabler)
+library(gt)
+library(glue)
+library(gridExtra)
+library(pander)
+```
+
+##Importing Data
+```{r}
+library(readr)
+uni_bank <- read.csv("C:\\Users\\Osama Zahir\\Downloads\\UniversalBank.csv")
+head(uni_bank)
+```
+##Viewing the bank data structure
+```{r}
+str(uni_bank)
+summary(uni_bank)
+```
+
+
+##Converting the Personal loan, Online and CreditCard in to factor 
+```{r}
+uni_bank$Personal.Loan = as.factor(uni_bank$Personal.Loan)
+uni_bank$Online = as.factor(uni_bank$Online)
+uni_bank$CreditCard = as.factor(uni_bank$CreditCard)
+```
+
+##Partitioning the data into training (60%) and validation (40%) sets Also showed the summary statistics of both train and Validation data set.
+```{r}
+set.seed(70)
+train_index = createDataPartition(uni_bank$Personal.Loan, p= .6, list=FALSE)
+Validation_index <- setdiff(row.names(uni_bank), train_index) 
+train_df <- uni_bank[train_index, ]
+nrow(train_df)
+summary(train_df)
+Validation_df <- uni_bank[Validation_index, ]
+nrow(Validation_df)
+summary(Validation_df)
+```
+
+##question (a): Create a pivot table for the training data with Online as a column variable, CC as a row variable, and Loan as a secondary row variable. The values inside the table should convey the count. In R use functions melt() and cast(), or function table().
+
+```{r}
+attach(train_df)
+melted_bank = melt(train_df,id.vars = c("CreditCard","Personal.Loan"), measure.vars = "Online")
+View(melted_bank)
+pivot_table <- dcast(melted_bank, CreditCard + Personal.Loan ~ variable, fun.aggregate=length)
+pivot_table
+X <- ftable(CreditCard,Personal.Loan,Online )
+pandoc.table(X,style="grid", split.tables = Inf)
+```
+##question (b):Consider the task of classifying a customer who owns a bank credit card and is actively using online banking services. Looking at the pivot table, what is the probability that this customer will accept the loan offer? [This is the probability of loan acceptance (Loan = 1) conditional on having a bank credit card (CC = 1) and being an active user of online banking services (Online = 1)].
+```{r}
+P_acceptance <- (48/514)
+P_acceptance
+paste("Probability of Loan acceptance given having a bank credit card and user of online services in percentage is", round(P_acceptance,4)*100,"%")
+```
+
+##question (c) : Create two separate pivot tables for the training data. One will have Loan (rows) as a function of Online (columns) and the other will have Loan (rows) as a function of CC.
+
+```{r}
+Loan_online <- addmargins(table(train_df[,c(13,10)]))
+pandoc.table(Loan_online,style="grid", split.tables = Inf)
+Loan_CC <- addmargins(table(train_df[,c(14,10)]))
+pandoc.table(Loan_CC,style="grid", split.tables = Inf)
+```
+
+##d. Compute the following quantities [P (A | B) means “the probability of A given B”]:
+```{r}
+##P (CC = 1 | Loan = 1) (the proportion of credit card holders among the loan acceptors)
+count_A1 <- Loan_CC[2, 2] #85
+count_A2 <- Loan_CC[3, 2] #288
+A = (count_A1/count_A2)
+paste("The proportion of credit card holders among the loan acceptors is", round(A*100,2),"%")
+
+##P(Online=1|Loan=1)
+count_B1 <- Loan_online[2, 2] #168
+count_B2 <- Loan_online[3, 2] #288
+B = (count_B1/count_B2)
+paste("The proportion of online active among the loan acceptors is", round(B*100,2),"%")
+
+#P (Loan = 1) (the proportion of loan acceptors)
+count_C1 <- Loan_online[3, 2] #288
+count_C2 <- Loan_online[3, 3] #3000
+C = (count_C1/count_C2)
+paste("the proportion of loan acceptors is", round(C*100,2),"%")
+
+#P(CC=1|Loan=0)
+count_D1 <- Loan_CC[2, 1] #775
+count_D2 <- Loan_CC[3, 1] #2712
+D = (count_D1/count_D2)
+paste("The proportion of credit card holders among the non-loan acceptors is", round(D*100,2),"%")
+
+#P(Online=1|Loan=0)
+count_E1 <- Loan_online[2, 1] #1604
+count_E2 <- Loan_online[3, 1] #2712
+E = (count_E1/count_E2)
+paste("The proportion of Online active among the non-loan acceptors is", round(E*100,2),"%")
+
+#P(Loan=0)
+count_F1 <- Loan_online[3,1] #2712
+count_F2 <- Loan_online[3,3] #3000
+F = (count_F1/count_F2)
+paste("The proportion of non- Loan acceptors", round(F*100,2),"%")
+```
+
+```{r}
+Naive_Bay_Prob <- ((A*B*C)/((A*B*C)+(D*E*F)))
+Naive_Bay_Prob
+paste("naive Bayer probability is", round(Naive_Bay_Prob,4)*100,"%")
+```
+
+
+##f. Compare this value with the one obtained from the pivot table in (b). Which is a more accurate estimate? 
+
+##9. 34% are very similar to the 9.76%.The exact method requires the exact same independent variable classifications to make predictions, while the Naive Bayes method does not.Which means exact method may be more rigid and precise in its predictions, but may also be limited by the requirement for exact classification of independent variables. In contrast, the Naive Bayes method may be more flexible in its predictions, but may also be less precise due to the simplifying assumption of independence among features
+
+##Question(g). Which of the entries in this table are needed for computing P (Loan = 1 | CC = 1, Online = 1)? In R, run naive Bayes on the data. Examine the model output on training data, and find the entry that corresponds to P (Loan = 1 | CC = 1, Online = 1). Compare this to the number you obtained in (e).
+```{r}
+#We only need 3 entries i.e Personal_loan, CreditCard and Online to predict P. 
+naive_train = train_df[,c(10,13:14)]
+naive_Validation = Validation_df[,c(10,13:14)]
+naivebayes_M = naiveBayes(Personal.Loan~.,data=naive_train)
+naivebayes_M
+
+Aprior_Prob_N = naivebayes_M$apriori
+Loan_Online_N = naivebayes_M$tables$Online
+Loan_CC_N = naivebayes_M$tables$CreditCard
+
+#probability Calculation from Naive Bayes Model.
+
+L_CC1 = Loan_CC_N[2,2] #0.2951389
+L_ON1 = Loan_Online_N[2,2] #0.5833333
+L1 = Aprior_Prob_N[1]
+L2 = Aprior_Prob_N[2]
+L = L2/(L1+L2) #0.096
+L_CC2 = Loan_CC_N[1,2] #0.285767
+L_ON2 = Loan_Online_N[1,2]  #0.5914454
+L_not = 1-L #0.904
+
+naive_bayes_Final <- ((L_CC1*L_ON1*L)/((L_CC1*L_ON1*L)+(L_CC2*L_ON2*L_not))) 
+naive_bayes_Final
+
+paste("naive Ba1 probability by using Naive bayers function is", round(naive_bayes_Final,4)*100,"%")
+detach(train_df)
+
+# We obtained the exact same result as in the previous method, specifically in question (e), because the joint and marginal probabilities we computed in question (e) match precisely with those provided by the naive Bayes function  
+```
