@@ -1,0 +1,304 @@
+---
+title: "Hierarchical Clustering"
+author: "Osama Bin Zahir"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Loading the dataset
+```{r}
+data=read.csv("C:\\Users\\Osama Zahir\\Downloads\\Cereals.csv")
+head(data)
+```
+
+#Viewing the summary and structure of that dataset
+```{r}
+summary(data)
+str(data)
+```
+
+#Loading required packages
+```{r}
+library(caret)
+library(corrplot)
+library(ggcorrplot)
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(e1071)
+library(reshape2)
+library(factoextra)
+library(cluster)
+library(cowplot)
+library(pander)
+library(kernlab)
+library(FactoMineR)
+```
+
+#Data Preprocessing. Remove all cereals with missing values.
+```{r}
+dim(data)
+```
+```{r}
+c_d2=na.omit(data)
+dim(c_d2)
+```
+#There were 4 missing values in the dataset
+
+#Assigning row names to the cereal column
+```{r}
+c_d3 = as.data.frame(c_d2)
+row.names(c_d3) = c_d3[,1]
+c_d4 = c_d3[,-1]
+```
+
+#Only selecting numerical values and removing catergorical variables
+```{r}
+c_d5 = c_d4[, c(3:11,13:15)]
+```
+
+#Normalizing the data using the scale function
+```{r}
+c_d5 = scale(c_d5)
+head(c_d5)
+```
+
+# Question 1 (part A): Apply hierarchical clustering to the data using Euclidean distance to the normalized measurements and looking at the correaltion values by plotting the corrplot
+```{r}
+distance_table <- get_dist(c_d5)
+fviz_dist(distance_table)
+corr_plot = cor(c_d5)
+ggcorrplot(corr_plot, outline.color = "grey50", lab = TRUE, hc.order = TRUE, type = "full")
+```
+```{r}
+#Sugar and calories are highly negatively correlated with rating. Also, Potass is highly positively correlated with fiber and Protien.
+```
+
+# Question 1 (part B): comparing hierarchical clustering with different linkages: single, average, complete and ward.
+```{r}
+# Hierarchical clustering using Complete Linkage
+hc1 <- hclust(distance_table, method = "complete" )
+# Plot the obtained dendrogram
+plot(hc1, cex = 0.6, hang = -1, main = "Dendrogram of Hierarchical Clustering")
+rect.hclust(hc1, k = 10, border = 2:10)
+```
+#Computing with AGNES and with different linkage methods
+```{r}
+hc_single <- agnes(distance_table, method = "single")
+print(hc_single$ac)
+```
+
+```{r}
+hc_complete <- agnes(distance_table, method = "complete")
+print(hc_complete$ac)
+```
+
+```{r}
+hc_average <- agnes(distance_table, method = "average")
+print(hc_average$ac)
+```
+
+```{r}
+hc_ward <- agnes(distance_table, method = "ward")
+print(hc_ward$ac)
+```
+```{r}
+#These results confirm that the Ward linkage, which provides 90.87% accuracy, is the optimal agglomerative (AGNES) linkage to use.
+```
+
+#Visualizing the dendogram
+```{r}
+hc_Ward <- agnes(distance_table, method = "ward")
+pltree(hc_Ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes for ward")
+```
+
+# Question 2: How many cluster would you choose?
+```{r}
+# The largest difference in height can be used to determine the k value hence K =5 is the best option.
+
+fviz_dend(hc_ward, k = 5,main = "Dendrogram of AGNES (Ward)",cex = 0.5, k_colors = c("red", "blue", "darkgreen", "violet", "purple"), color_labels_by_k = TRUE,labels_track_height = 16,ggtheme = theme_bw())
+```
+
+```{r}
+c_d6 <- cutree(hc_ward, k = 5)
+Clustered_df <-as.data.frame(cbind ( c_d5, c_d6 ))
+```
+
+# Question 3: Comment on the structure of the clusters and on their stability. Hint: To check stability, partition the data and see how well clusters formed based on one part apply to the other part
+
+#For the stability of the clusters, We will partition the data into A and B.
+```{r}
+cereal_a = c_d5[1:55,]
+cereal_b = c_d5[56:74,]
+```
+
+#Computing the distances of cereal_a
+```{r}
+distance_cereal_a = get_dist(cereal_a)
+```
+
+#Compute with AGNES and with different linkage methods for cereal_a 
+```{r}
+hc_single_cereal_a <- agnes(distance_cereal_a, method = "single")
+print(hc_single_cereal_a$ac)
+```
+
+```{r}
+hc_complete_cereal_a <- agnes(distance_cereal_a, method = "complete")
+print(hc_complete_cereal_a$ac)
+```
+
+```{r}
+hc_average_cereal_a <- agnes(distance_cereal_a, method = "average")
+print(hc_average_cereal_a$ac)
+```
+
+```{r}
+hc_ward_cereal_a <- agnes(distance_cereal_a, method = "ward")
+print(hc_ward_cereal_a$ac)
+```
+#With 88.91% accuracy, it enables us to establish that the best linkage for cereal_a is Ward.
+
+#Computing the distances of cereal_a
+```{r}
+distance_cereal_b = get_dist(cereal_b)
+```
+
+#Compute with AGNES and with different linkage methods for cereal_b
+```{r}
+hc_single_cereal_b <- agnes(distance_cereal_b, method = "single")
+print(hc_single_cereal_b$ac)
+```
+
+```{r}
+hc_complete_cereal_b <- agnes(distance_cereal_b, method = "complete")
+print(hc_complete_cereal_b$ac)
+```
+
+```{r}
+hc_average_cereal_b <- agnes(distance_cereal_b, method = "average")
+print(hc_average_cereal_b$ac)
+```
+
+```{r}
+hc_ward_cereal_b <- agnes(distance_cereal_b, method = "ward")
+print(hc_ward_cereal_b$ac)
+```
+#With 77.10% accuracy, it enables us to establish that the best linkage for cereal_a is Ward.
+
+#Plotting dendogram of cereal_a and cereal_b
+```{r}
+fviz_dend(hc_ward_cereal_a, k = 5,main = "Cereal_a Dendrogram of AGNES",cex = 0.5, k_colors = c("black", "purple", "blue", "brown", "red"), color_labels_by_k = TRUE,labels_track_height = 16,ggtheme = theme_bw())
+```
+
+```{r}
+fviz_dend(hc_ward_cereal_b, k = 5,main = "Cereal_b Dendrogram of AGNES",cex = 0.5, k_colors = c("black", "purple", "blue", "brown", "red"), color_labels_by_k = TRUE,labels_track_height = 16,ggtheme = theme_bw())
+```
+
+# Question 3 (part B): Use the cluster centroids from A to assign each record in partition B (each record is assigned to the cluster with the closest centroid)
+
+```{r}
+Clustered_df_A <-cutree (hc_ward_cereal_a, k=5)
+Clusters_A <-as.data.frame(cbind(cereal_a, Clustered_df_A))
+Clust_1 <- colMeans (Clusters_A [Clusters_A$ Clustered_df_A == "1" ,])
+# The centroid of cluster 1 is represented by a vector of mean values for each column of the data as a result. 
+```
+
+```{r}
+Clustered_df_B <-cutree (hc_ward_cereal_b, k=5)
+Clusters_B <-as.data.frame(cbind(cereal_b, Clustered_df_B))
+Clust_2 <- colMeans (Clusters_B [Clusters_B$ Clustered_df_B == "1" ,])
+# The centroid of cluster 2 is represented by a vector of mean values for each column of the data as a result.
+```
+
+```{r}
+Centroid <-rbind(Clust_1, Clust_2)
+Centroid
+```
+# Question 3 (part C): Assess how consistent the cluster assignments are compared to the assignments based on all the data.
+```{r}
+# After reviewing the centroid, it shows that cluster 1 is high in protein, fiber, and potassium. It means that the cereals in cluster 1 is more healthier than cluster 2. It can also be supported by looking at calories, fat, carbs, and sugar levels which are higher in cluster 2 as compared to cluster 1. Thus cereals in cluster 1 are healthier. 
+```
+
+# Q4:The elementary public schools would like to choose a set of cereals to include in their daily cafeterias. Every day a different cereal is offered, but all cereals should support a healthy diet. For this goal, you are requested to find a cluster of “healthy cereals.”Should the data be normalized? If not, how should they be used in the cluster analysis?
+
+```{r}
+#Visualizing the clusters in Scatter plot
+fviz_cluster(list(data=distance_table, cluster = c_d6))
+```
+
+```{r}
+Healthy_cereal<- cbind(c_d2,c_d6)
+mean(Healthy_cereal[Healthy_cereal$c_d6==1,"rating"])
+```
+```{r}
+mean(Healthy_cereal[Healthy_cereal$c_d6==2,"rating"])
+```
+```{r}
+mean(Healthy_cereal[Healthy_cereal$c_d6==3,"rating"])
+```
+```{r}
+mean(Healthy_cereal[Healthy_cereal$c_d6==4,"rating"])
+```
+```{r}
+mean(Healthy_cereal[Healthy_cereal$c_d6==5,"rating"])
+```
+#It is evident that Cluster1 has the highest rating (73.84446), so we will select it as a nutritious cereal.
+
+#lets also visualize the results by plotting a bar chart
+
+```{r}
+calories <- ggplot(Clustered_df, aes(x = c_d6, y = calories)) + 
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(x = "Cluster", y = "Calories") +
+  ggtitle("Cluster by Calories")
+
+protein <- ggplot(Clustered_df, aes(x = c_d6, y = protein)) + 
+  geom_bar(stat = "identity", fill = "red") +
+  labs(x = "Cluster", y = "protein") +
+  ggtitle("Cluster by Protein")
+
+fat <- ggplot(Clustered_df, aes(x = c_d6, y = fat)) + 
+  geom_bar(stat = "identity", fill = "orange") +
+  labs(x = "Cluster", y = "fat") +
+  ggtitle("Cluster by Fat")
+
+sodium <- ggplot(Clustered_df, aes(x = c_d6, y = sodium)) + 
+  geom_bar(stat = "identity", fill = "pink") +
+  labs(x = "Cluster", y = "sodium") +
+  ggtitle("Cluster by sodium")
+
+fiber <- ggplot(Clustered_df, aes(x = c_d6, y = fiber)) + 
+  geom_bar(stat = "identity", fill = "gray") +
+  labs(x = "Cluster", y = "fiber") +
+  ggtitle("Cluster by fiber")
+
+carbo <- ggplot(Clustered_df, aes(x = c_d6,, y = carbo)) + 
+  geom_bar(stat = "identity", fill = "brown") +
+  labs(x = "Cluster", y = "carbo") +
+  ggtitle("Cluster by carbo")
+
+sugars <- ggplot(Clustered_df, aes(x = c_d6,, y = sugars)) + 
+  geom_bar(stat = "identity", fill = "lightgreen") +
+  labs(x = "Cluster", y = "sugars") +
+  ggtitle("Cluster by sugars")
+
+potass <- ggplot(Clustered_df, aes(x = c_d6,, y = potass)) + 
+  geom_bar(stat = "identity", fill = "yellow") +
+  labs(x = "Cluster", y = "potass") +
+  ggtitle("Cluster by potass")
+
+rating <- ggplot(Clustered_df, aes(x = c_d6,, y = rating)) + 
+  geom_bar(stat = "identity", fill = "black") +
+  labs(x = "Cluster", y = "rating") +
+  ggtitle("Cluster by rating")
+plot_grid(calories, protein, fat, sodium, fiber, carbo, sugars, potass, rating)
+```
+#Here we can see that cluster 1 still has the best results. It is low in calories, sugar, and fat. It has higher content of fiber, potassium and protein. Thus we can conclude that cluster 1 can be a set of cereals to include in their daily cafeterias.
+
